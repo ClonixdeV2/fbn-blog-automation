@@ -1,64 +1,72 @@
+import requests
+import base64
+import os
+import random
+from datetime import datetime
+import smtplib
+from email.mime.text import MIMEText
+
+# === CONFIG ===
+wp_url = os.environ['WP_URL']
 wp_user = os.environ['WP_USER']
 wp_password = os.environ['WP_APP_PASSWORD']
 
-# SEO TITEL OPTIES (uniek, zonder datum)
+# Email info
+notify_email = "fabianbaartman5@gmail.com"
+
+# === TITELS & STRUCTUUR ===
 title_options = [
-    "Lokale SEO-kansen in Zuid-Holland benutten",
     "Zo vergroot je online zichtbaarheid in Zuid-Holland",
     "Meer B2B-leads met SEO in Rotterdam",
-    "Waarom bedrijven in Zuid-Holland investeren in zoekmachineoptimalisatie",
-    "De kracht van contentmarketing voor MKB Zuid-Holland",
-    "Hoe jij meer klanten trekt via Google in Zuid-Holland"
     "Waarom SEO essentieel is voor bedrijven in Zuid-Holland",
     "Lokale zichtbaarheid verbeteren als ondernemer in Zuid-Holland",
     "Contentstrategie voor MKB in Zuid-Holland"
+    "Zo verbeter je je online zichtbaarheid in Zuid-Holland",
+    "Waarom SEO cruciaal is voor ondernemers in Zuid-Holland",
+    "Een contentstrategie die werkt voor MKB in Zuid-Holland",
+    "Lokale marketingtips voor bedrijven in Rotterdam & omgeving",
+    "Meer leads en zichtbaarheid via SEO: zo pak je het aan"
 ]
 title = random.choice(title_options)
 
-@@ -26,8 +25,8 @@
+@@ -25,96 +30,66 @@
     "Content-Type": "application/json"
 }
 
-# === MEDIA AANMAKEN EN TERUGGEVEN ALS BLOCK EN HTML TAG ===
-def generate_and_upload(prompt, alt):
 # === HELPER: AFBEELDING UPLOADEN ===
 def upload_image(prompt, alt):
     img_data = requests.get(f"https://source.unsplash.com/800x600/?{prompt}").content
     filename = f"{prompt.replace(' ', '_')}.jpg"
     with open(filename, 'wb') as f:
-@@ -46,71 +45,107 @@ def generate_and_upload(prompt, alt):
+        f.write(img_data)
+
+    upload_headers = {
+        "Authorization": f"Basic {auth}",
+        "Content-Disposition": f"attachment; filename={filename}",
+        "Content-Type": "image/jpeg"
+    }
+
+    with open(filename, 'rb') as f:
+        res = requests.post(f"{wp_url}/wp-json/wp/v2/media", headers=upload_headers, data=f.read())
+
+    os.remove(filename)
 
     if res.status_code == 201:
         media = res.json()
-        img_url = media['source_url']
-        media_id = media['id']
-        block = {
-            "blockName": "core/image",
-            "attrs": {"id": media_id, "alt": alt},
-            "innerHTML": f"<img src=\"{img_url}\" alt=\"{alt}\"/>",
-            "innerContent": [f"<img src=\"{img_url}\" alt=\"{alt}\"/>"]
-        }
-        html_tag = f'<img src="{img_url}" alt="{alt}"/>'
-        return block, media_id, html_tag
-    else:
-        return None, None, ''
-
-# === BLOKKEN STRUCTUUR OPBOUWEN ===
-blocks = []
         return media['id'], media['source_url']
     return None, ''
 
-# === CONTENT BLOKKEN ===
-content_blocks = []
+# === CONTENT OPBOUWEN ALS PURE HTML ===
 html_content = ""
 
-intro_html = """<p><strong>Wil jij als ondernemer in Zuid-Holland meer uit online marketing halen?</strong> Dan is SEO geen luxe meer, maar noodzaak. In dit artikel lees je hoe je vindbaarheid en conversie vergroot.</p>"""
-blocks.append({"blockName": "core/paragraph", "attrs": {}, "innerHTML": intro_html, "innerContent": [intro_html]})
 intro_html = """
 <p><strong>Wil jij als ondernemer in Zuid-Holland meer uit online marketing halen?</strong>
 Dan is SEO geen luxe meer, maar noodzaak. In dit artikel lees je hoe je vindbaarheid en conversie vergroot.</p>
+# === SEO BLOG OPBOUWEN ===
+intro = """
+<p><strong>Als ondernemer in Zuid-Holland weet je hoe belangrijk het is om online gevonden te worden.</strong>
+In deze blog leer je hoe je met slimme SEO en contentmarketing meer verkeer én klanten aantrekt.</p>
 """
-content_blocks.append({"blockName": "core/paragraph", "attrs": {}, "innerHTML": intro_html, "innerContent": [intro_html]})
 html_content += intro_html
 
 koppen = [
@@ -67,9 +75,6 @@ koppen = [
     "Techniek telt mee"
 ]
 teksten = [
-    ("1. Lokale SEO: scoor in je regio", "Gebruik lokale zoekwoorden zoals 'SEO bureau Rotterdam' of 'marketingbureau Den Haag'. Zorg dat je Google bedrijfsprofiel geoptimaliseerd is."),
-    ("2. Content die converteert", "Publiceer waardevolle content die inspeelt op vragen van jouw doelgroep. Denk aan checklists, blogs of gratis downloads."),
-    ("3. Techniek telt mee", "Een snelle website en duidelijke structuur helpen Google én je bezoeker. Gebruik tools als PageSpeed Insights om verbeterpunten te vinden.")
     "Gebruik lokale zoekwoorden zoals 'SEO bureau Rotterdam' of 'marketingbureau Den Haag'. Zorg dat je Google bedrijfsprofiel geoptimaliseerd is.",
     "Publiceer waardevolle content die inspeelt op vragen van jouw doelgroep. Denk aan checklists, blogs of gratis downloads.",
     "Een snelle website en duidelijke structuur helpen Google én je bezoeker. Gebruik tools als PageSpeed Insights om verbeterpunten te vinden."
@@ -85,100 +90,78 @@ alts = [
     "Technische optimalisatie"
 ]
 
-prompts = ["seo rotterdam", "content marketing b2b", "technical seo"]
-alts = ["SEO Rotterdam tips", "Contentmarketing Zuid-Holland", "SEO technische optimalisatie"]
-
 featured_media_id = None
+h1 = "<h3>Wat is lokale SEO precies?</h3>"
+p1 = "<p>Lokale SEO richt zich op het vindbaar maken van je bedrijf in je directe omgeving. Denk aan zoekopdrachten als 'marketingbureau Rotterdam' of 'webdesign Den Haag'. Door je website en content lokaal te optimaliseren, sta je sneller bovenaan in Google voor mensen in jouw regio.</p>"
 
 for i in range(3):
-    heading, text = teksten[i]
-    tekst_html = f"<h3>{heading}</h3><p>{text}</p>"
-    blocks.append({"blockName": "core/paragraph", "attrs": {}, "innerHTML": tekst_html, "innerContent": [tekst_html]})
-    html_content += tekst_html
-
-    image_block, media_id, html_tag = generate_and_upload(prompts[i], alts[i])
-    if image_block:
-        blocks.append(image_block)
-        html_content += html_tag
-        if i == 0:
-            featured_media_id = media_id
-
-outro_html = """<p><strong>Klaar om hoger te ranken en meer leads te scoren?</strong> FBN Marketing helpt bedrijven in Zuid-Holland groeien via SEO.</p>"""
-blocks.append({"blockName": "core/paragraph", "attrs": {}, "innerHTML": outro_html, "innerContent": [outro_html]})
     heading_html = f"<h3>{koppen[i]}</h3>"
     paragraph_html = f"<p>{teksten[i]}</p>"
     image_id, image_url = upload_image(prompts[i], alts[i])
+h2 = "<h3>Content die vertrouwen opbouwt</h3>"
+p2 = "<p>Publiceer regelmatig waardevolle content die inspeelt op vragen van jouw doelgroep. Denk aan blogs, checklists of klantverhalen. Vermijd oppervlakkigheid: Google beloont diepgang en originaliteit. Schrijf minimaal 600 woorden en gebruik relevante zoekwoorden, zoals 'SEO Zuid-Holland' of 'online marketing MKB'.</p>"
 
     if i == 0 and image_id:
         featured_media_id = image_id
+h3 = "<h3>Techniek en snelheid: de onzichtbare helden</h3>"
+p3 = "<p>Een snelle, technisch goed gebouwde website is essentieel. Zorg voor een mobielvriendelijk ontwerp, schone code en snelle laadtijden. Tools zoals Google PageSpeed Insights en GTmetrix helpen je verbeterpunten te vinden. Vergeet ook de juiste structuur van je headings (H1, H2, H3) niet.</p>"
 
-    # Media text block
-    media_block = {
-        "blockName": "core/media-text",
-        "attrs": {
-            "mediaId": image_id,
-            "mediaType": "image",
-            "mediaUrl": image_url,
-            "verticalAlignment": "center"
-        },
-        "innerBlocks": [
-            {
-                "blockName": "core/image",
-                "attrs": {"id": image_id, "alt": alts[i]},
-                "innerHTML": f"<img src=\"{image_url}\" alt=\"{alts[i]}\" />",
-                "innerContent": [f"<img src=\"{image_url}\" alt=\"{alts[i]}\" />"]
-            },
-            {
-                "blockName": "core/paragraph",
-                "attrs": {},
-                "innerHTML": heading_html + paragraph_html,
-                "innerContent": [heading_html + paragraph_html]
-            }
-        ],
-        "innerHTML": "",
-        "innerContent": []
-    }
-    content_blocks.append(media_block)
-    html_content += heading_html + paragraph_html + f'<img src="{image_url}" alt="{alts[i]}">'  # fallback
+    html_content += heading_html + paragraph_html + f'<img src="{image_url}" alt="{alts[i]}"><br>'
+h4 = "<h3>Gebruik Google Mijn Bedrijf</h3>"
+p4 = "<p>Een goed ingevuld Google Business-profiel maakt je zichtbaar in Google Maps én in lokale zoekresultaten. Vraag klanten om reviews, upload foto’s en zorg dat je bedrijfsinformatie actueel blijft. Dit versterkt je lokale SEO enorm.</p>"
 
 outro_html = """
 <p><strong>Klaar om hoger te ranken en meer leads te scoren?</strong>
 FBN Marketing helpt bedrijven in Zuid-Holland groeien via SEO.</p>
+outro = """
+<p><strong>Wil jij hoger in Google komen en meer klanten aantrekken?</strong>
+FBN Marketing helpt bedrijven in Zuid-Holland met effectieve SEO en contentstrategie. Neem contact op voor een vrijblijvende scan van je online vindbaarheid.</p>
 """
-content_blocks.append({"blockName": "core/paragraph", "attrs": {}, "innerHTML": outro_html, "innerContent": [outro_html]})
 html_content += outro_html
 
-# === POST OPSTELLEN ===
 # === YOAST SEO META ===
+html_content = intro + h1 + p1 + h2 + p2 + h3 + p3 + h4 + p4 + outro
+
+# === YOAST META ===
 seo_meta = {
     "yoast_title": title,
     "yoast_meta": f"{title} - SEO tips voor ondernemers in Zuid-Holland.",
+    "yoast_meta": f"{title} - Praktische SEO tips voor ondernemers in Zuid-Holland.",
     "yoast_focuskw": "SEO Zuid-Holland"
 }
 
 # === POST VERSTUREN ===
+# === POST AANMAKEN ===
 post_data = {
     "title": title,
     "status": "publish",
     "content": html_content,
-    "blocks": blocks,
-    "blocks": content_blocks,
     "featured_media": featured_media_id,
-    "meta": {
-        "yoast_title": title,
-        "yoast_meta": f"{title} - SEO tips voor ondernemers in Zuid-Holland.",
-        "yoast_focuskw": "SEO Zuid-Holland"
-    }
     "meta": seo_meta
 }
 
-r = requests.post(f"{wp_url}/wp-json/wp/v2/posts", headers=headers, json=post_data)
-if r.status_code == 201:
-    print("✅ Versie 3.8 geplaatst – fallback HTML toegevoegd + afbeeldingen geforceerd")
 res = requests.post(f"{wp_url}/wp-json/wp/v2/posts", headers=headers, json=post_data)
 
 if res.status_code == 201:
-    print("✅ Post succesvol gepubliceerd met layout en afbeeldingen.")
+    print("✅ Post succesvol gepubliceerd met tekst, afbeeldingen en layout.")
+    post = res.json()
+    post_link = post['link']
+    print("✅ Blog gepubliceerd: ", post_link)
+
+    # === MAIL VERSTUREN ===
+    msg = MIMEText(f"Er is een nieuwe blog geplaatst op FBN Design:\n\n{title}\n{post_link}")
+    msg['Subject'] = "Nieuwe blog op FBN Design"
+    msg['From'] = "noreply@fbndesign.nl"
+    msg['To'] = notify_email
+
+    try:
+        with smtplib.SMTP('smtp.gmail.com', 587) as smtp:
+            smtp.starttls()
+            smtp.login(os.environ['EMAIL_USER'], os.environ['EMAIL_PASS'])
+            smtp.send_message(msg)
+            print("📧 Mail verstuurd naar:", notify_email)
+    except Exception as e:
+        print("❌ Mail kon niet worden verstuurd:", e)
 else:
-    print(f"❌ Mislukt: {r.status_code}\n{r.text}")
     print(f"❌ Publiceren mislukt: {res.status_code}\n{res.text}")
+    print(f"❌ Mislukt: {res.status_code}\n{res.text}")
