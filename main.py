@@ -1,6 +1,7 @@
 import requests
 import base64
 import os
+import random
 from datetime import datetime
 
 # === CONFIG ===
@@ -8,14 +9,48 @@ wp_url = os.environ['WP_URL']
 wp_user = os.environ['WP_USER']
 wp_password = os.environ['WP_APP_PASSWORD']
 
-title = "7 SEO-strategieën die B2B bedrijven in 2025 winst opleveren"
-image_url = "https://source.unsplash.com/960x640/?seo,marketing,business"
-alt_text = "SEO-strategieën voor B2B in 2025"
+# Dynamische titelgeneratie
+seo_topics = [
+    "SEO-tips voor B2B bedrijven",
+    "Zoekmachineoptimalisatie die echt werkt",
+    "Meer leads met SEO in 2025",
+    "Waarom jouw B2B-bedrijf SEO nodig heeft",
+    "Slimme SEO-trucs voor ondernemers"
+]
+today = datetime.today().strftime("%Y-%m-%d")
+title = f"{random.choice(seo_topics)} – {today}"
 
+image_url = "https://source.unsplash.com/960x640/?seo,marketing,business"
+alt_text = "SEO strategie B2B marketing 2025"
+
+# === AUTH ===
+token = base64.b64encode(f"{wp_user}:{wp_password}".encode()).decode("utf-8")
+headers = {
+    "Authorization": f"Basic {token}",
+    "Content-Type": "application/json"
+}
+
+# === AFBEELDING OPHALEN EN UPLOADEN ===
+image_data = requests.get(image_url).content
+media = requests.post(
+    f"{wp_url}/wp-json/wp/v2/media",
+    headers={**headers, "Content-Disposition": "attachment; filename=seo-image.jpg"},
+    data=image_data
+)
+
+if media.status_code == 201:
+    image_json = media.json()
+    image_id = image_json['id']
+    image_src = image_json['source_url']
+else:
+    image_id = None
+    image_src = image_url  # fallback, maar niet ideaal
+
+# === CONTENT ===
 content = f"""
 <p><strong>SEO is in 2025 geen optie meer, maar een noodzaak.</strong> Vooral in B2B-markten waar concurrentie hevig is en beslissers snel willen schakelen.</p>
 
-<img src=\"{image_url}\" alt=\"{alt_text}\" style=\"max-width:100%;height:auto;margin:20px 0;\"/>
+<img src=\"{image_src}\" alt=\"{alt_text}\" style=\"max-width:100%;height:auto;margin:20px 0;\"/>
 
 <h3>1. Zoekwoordonderzoek met intentie</h3>
 <p>Gebruik tools zoals SEMrush of Ubersuggest om niet alleen volume, maar <strong>zoekintentie</strong> te begrijpen. B2B-klanten zoeken anders dan consumenten.</p>
@@ -40,26 +75,6 @@ content = f"""
 
 <p><strong>Conclusie:</strong> Begin vandaag. Of bel FBN Marketing, dan regelen wij het.</p>
 """
-
-# === AUTH ===
-token = base64.b64encode(f"{wp_user}:{wp_password}".encode()).decode("utf-8")
-headers = {
-    "Authorization": f"Basic {token}",
-    "Content-Type": "application/json"
-}
-
-# === AFBEELDING OPHALEN EN UPLOADEN ===
-image_data = requests.get(image_url).content
-media = requests.post(
-    f"{wp_url}/wp-json/wp/v2/media",
-    headers={**headers, "Content-Disposition": "attachment; filename=seo.jpg"},
-    data=image_data
-)
-
-if media.status_code == 201:
-    image_id = media.json()['id']
-else:
-    image_id = None
 
 # === BLOG PLAATSEN ===
 post_data = {
