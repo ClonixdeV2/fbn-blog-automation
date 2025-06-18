@@ -20,7 +20,7 @@ seo_topics = [
 today = datetime.today().strftime("%Y-%m-%d")
 title = f"{random.choice(seo_topics)} – {today}"
 
-image_url = "https://source.unsplash.com/960x640/?seo,marketing,business"
+unsplash_url = "https://source.unsplash.com/960x640/?seo,marketing,business"
 alt_text = "SEO strategie B2B marketing 2025"
 
 # === AUTH ===
@@ -30,27 +30,29 @@ headers = {
     "Content-Type": "application/json"
 }
 
-# === AFBEELDING OPHALEN EN UPLOADEN ===
-image_data = requests.get(image_url).content
-media = requests.post(
+# === AFBEELDING DOWNLOADEN EN UPLOADEN ===
+image_data = requests.get(unsplash_url).content
+media_response = requests.post(
     f"{wp_url}/wp-json/wp/v2/media",
     headers={**headers, "Content-Disposition": "attachment; filename=seo-image.jpg"},
     data=image_data
 )
 
-if media.status_code == 201:
-    image_json = media.json()
-    image_id = image_json['id']
-    image_src = image_json['source_url']
-else:
-    image_id = None
-    image_src = image_url  # fallback, maar niet ideaal
+image_id = None
+image_src = ""
+
+if media_response.status_code == 201:
+    image_json = media_response.json()
+    image_id = image_json.get('id')
+    image_src = image_json.get('source_url', '')
 
 # === CONTENT ===
+image_html = f'<img src="{image_src}" alt="{alt_text}" style="max-width:100%;height:auto;margin:20px 0;"/>' if image_src else ''
+
 content = f"""
 <p><strong>SEO is in 2025 geen optie meer, maar een noodzaak.</strong> Vooral in B2B-markten waar concurrentie hevig is en beslissers snel willen schakelen.</p>
 
-<img src=\"{image_src}\" alt=\"{alt_text}\" style=\"max-width:100%;height:auto;margin:20px 0;\"/>
+{image_html}
 
 <h3>1. Zoekwoordonderzoek met intentie</h3>
 <p>Gebruik tools zoals SEMrush of Ubersuggest om niet alleen volume, maar <strong>zoekintentie</strong> te begrijpen. B2B-klanten zoeken anders dan consumenten.</p>
@@ -76,7 +78,7 @@ content = f"""
 <p><strong>Conclusie:</strong> Begin vandaag. Of bel FBN Marketing, dan regelen wij het.</p>
 """
 
-# === BLOG PLAATSEN ===
+# === BLOG POSTEN ===
 post_data = {
     "title": title,
     "content": content,
