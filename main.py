@@ -19,8 +19,50 @@ title_options = [
 ]
 title = random.choice(title_options)
 
-# HTML content met placeholders voor afbeeldings-URLs
-content_template = """
+# === AUTH HEADER ===
+wp_auth = base64.b64encode(f"{wp_user}:{wp_password}".encode()).decode("utf-8")
+headers = {
+    "Authorization": f"Basic {wp_auth}",
+    "Content-Type": "application/json"
+}
+
+# === LOKALE AI-AFBEELDING (DALL-E via placeholder) ===
+def generate_image_file(prompt):
+    dalle_url = f"https://source.unsplash.com/800x600/?{prompt}"
+    img_data = requests.get(dalle_url).content
+    filename = f"image_{prompt.replace(' ', '_')}.jpg"
+    with open(filename, 'wb') as f:
+        f.write(img_data)
+    return filename
+
+def upload_media(filename, alt_text):
+    media_headers = {
+        "Authorization": f"Basic {wp_auth}",
+        "Content-Disposition": f"attachment; filename={filename}",
+        "Content-Type": "image/jpeg"
+    }
+    with open(filename, 'rb') as f:
+        img_data = f.read()
+    response = requests.post(f"{wp_url}/wp-json/wp/v2/media", headers=media_headers, data=img_data)
+    if response.status_code == 201:
+        return response.json()['source_url'], response.json()['id']
+    return None, None
+
+# Genereer & upload 3 afbeeldingen
+prompts = ["seo rotterdam", "content marketing b2b", "technical seo"]
+alts = ["SEO Rotterdam tips", "Contentmarketing Zuid-Holland", "SEO technische optimalisatie"]
+img_urls = []
+img_ids = []
+
+for i in range(3):
+    file = generate_image_file(prompts[i])
+    url, media_id = upload_media(file, alts[i])
+    img_urls.append(url)
+    img_ids.append(media_id)
+    os.remove(file)
+
+# === HTML-CONTENT MET INGESLOTEN IMG TAGS ===
+content = f"""
 <p><strong>Wil jij als ondernemer in Zuid-Holland meer uit online marketing halen?</strong> Dan is SEO geen luxe meer, maar noodzaak. In dit artikel lees je hoe je vindbaarheid en conversie vergroot.</p>
 
 <div style='display:flex;flex-wrap:wrap;align-items:center;margin:40px 0;'>
@@ -29,7 +71,7 @@ content_template = """
     <p>Gebruik lokale zoekwoorden zoals 'SEO bureau Rotterdam' of 'marketingbureau Den Haag'. Zorg dat je Google bedrijfsprofiel geoptimaliseerd is.</p>
   </div>
   <div style='flex:1;padding:10px;'>
-    <img src='{IMG_1}' alt='SEO Rotterdam tips' style='max-width:100%;border-radius:8px;'>
+    <img src='{img_urls[0]}' alt='SEO Rotterdam tips' style='max-width:100%;border-radius:8px;'>
   </div>
 </div>
 
@@ -39,7 +81,7 @@ content_template = """
     <p>Publiceer waardevolle content die inspeelt op vragen van jouw doelgroep. Denk aan checklists, blogs of gratis downloads.</p>
   </div>
   <div style='flex:1;padding:10px;'>
-    <img src='{IMG_2}' alt='Contentmarketing Zuid-Holland' style='max-width:100%;border-radius:8px;'>
+    <img src='{img_urls[1]}' alt='Contentmarketing Zuid-Holland' style='max-width:100%;border-radius:8px;'>
   </div>
 </div>
 
@@ -49,51 +91,17 @@ content_template = """
     <p>Een snelle website en duidelijke structuur helpen Google én je bezoeker. Gebruik tools als PageSpeed Insights om verbeterpunten te vinden.</p>
   </div>
   <div style='flex:1;padding:10px;'>
-    <img src='{IMG_3}' alt='SEO technische optimalisatie' style='max-width:100%;border-radius:8px;'>
+    <img src='{img_urls[2]}' alt='SEO technische optimalisatie' style='max-width:100%;border-radius:8px;'>
   </div>
 </div>
 
 <p><strong>Klaar om hoger te ranken en meer leads te scoren?</strong> FBN Marketing helpt bedrijven in Zuid-Holland groeien via SEO.</p>
 """
 
-# === MEDIA AANMAKEN ===
-def upload_image(img_prompt, alt_text):
-    dalle_url = "https://source.unsplash.com/600x400/?" + img_prompt
-    img_data = requests.get(dalle_url).content
-    media_headers = {
-        "Authorization": f"Basic {base64.b64encode(f'{wp_user}:{wp_password}'.encode()).decode('utf-8')}",
-        "Content-Disposition": f"attachment; filename={img_prompt.replace(' ','_')}.jpg",
-        "Content-Type": "image/jpeg"
-    }
-    res = requests.post(f"{wp_url}/wp-json/wp/v2/media", headers=media_headers, data=img_data)
-    if res.status_code == 201:
-        media = res.json()
-        return media['source_url'], media['id']
-    return "", None
-
-img_urls = []
-img_ids = []
-prompts = ["seo rotterdam", "content marketing b2b", "technical seo"]
-alts = ["SEO Rotterdam tips", "Contentmarketing Zuid-Holland", "SEO technische optimalisatie"]
-for i in range(3):
-    url, media_id = upload_image(prompts[i], alts[i])
-    img_urls.append(url)
-    img_ids.append(media_id)
-
-# === CONTENT INJECT ===
-content_filled = content_template.replace('{IMG_1}', img_urls[0]) \
-    .replace('{IMG_2}', img_urls[1]) \
-    .replace('{IMG_3}', img_urls[2])
-
-# === POST AANMAKEN ===
-headers = {
-    "Authorization": f"Basic {base64.b64encode(f'{wp_user}:{wp_password}'.encode()).decode('utf-8')}",
-    "Content-Type": "application/json"
-}
-
+# === POSTEN ===
 post_data = {
     "title": title,
-    "content": content_filled,
+    "content": content,
     "status": "publish",
     "featured_media": img_ids[0],
     "meta": {
@@ -103,9 +111,8 @@ post_data = {
     }
 }
 
-r = requests.post(f"{wp_url}/wp-json/wp/v2/posts", headers=headers, json=post_data)
-
-if r.status_code == 201:
-    print("✅ Blog succesvol geplaatst met afbeelding en SEO")
+response = requests.post(f"{wp_url}/wp-json/wp/v2/posts", headers=headers, json=post_data)
+if response.status_code == 201:
+    print("✅ Blog met AI-afbeeldingen succesvol gepubliceerd")
 else:
-    print(f"❌ Mislukt: {r.status_code}\n{r.text}")
+    print("❌ Fout bij plaatsen:", response.status_code, response.text)
