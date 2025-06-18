@@ -95,3 +95,33 @@ if res.status_code == 201:
         print("❌ Mail kon niet worden verstuurd:", e)
 else:
     print(f"❌ Mislukt: {res.status_code}\n{res.text}")
+name: Blog plaatsen
+
+on:
+  workflow_dispatch:
+
+jobs:
+  post_blog:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Blog plaatsen
+        run: python main.py
+        env:
+          WP_URL: ${{ secrets.WP_URL }}
+          WP_USER: ${{ secrets.WP_USER }}
+          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
+          EMAIL_NOTIFY: ${{ secrets.EMAIL_NOTIFY }}
