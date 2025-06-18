@@ -1,0 +1,30 @@
+name: Wekelijkse blogpost
+
+on:
+  schedule:
+    - cron: '0 7 * * 1'
+  workflow_dispatch:
+
+jobs:
+  post_blog:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repo klonen
+        uses: actions/checkout@v3
+
+      - name: Python activeren
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Dependencies installeren
+        run: pip install requests
+
+      - name: Blog plaatsen
+        run: python main.py
+        env:
+          WP_URL: ${{ secrets.WP_URL }}
+          WP_USER: ${{ secrets.WP_USER }}
+          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+          EMAIL_NOTIFY: ${{ secrets.EMAIL_NOTIFY }}
