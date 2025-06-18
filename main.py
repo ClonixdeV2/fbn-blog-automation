@@ -3,36 +3,72 @@ import base64
 import os
 from datetime import datetime
 
-# Gegevens uit GitHub Secrets
+# === CONFIG ===
 wp_url = os.environ['WP_URL']
 wp_user = os.environ['WP_USER']
 wp_password = os.environ['WP_APP_PASSWORD']
-email_notify = os.environ['EMAIL_NOTIFY']
 
-# Bloginhoud
-title = f"Waarom SEO belangrijk is voor B2B – {datetime.now().strftime('%Y-%m-%d')}"
-content = """
-<p><strong>SEO is essentieel in 2025.</strong> Bedrijven die online zichtbaar zijn, hebben voorsprong. In dit artikel lees je waarom content en optimalisatie jouw groei versnellen.</p>
+title = "7 SEO-strategieën die B2B bedrijven in 2025 winst opleveren"
+image_url = "https://source.unsplash.com/960x640/?seo,marketing,business"
+
+content = f"""
+<p><strong>SEO is in 2025 geen optie meer, maar een noodzaak.</strong> Vooral in B2B-markten waar concurrentie hevig is en beslissers snel willen schakelen.</p>
+
+<h2>1. Zoekwoordonderzoek met intentie</h2>
+<p>Gebruik tools zoals SEMrush of Ubersuggest om niet alleen volume, maar <strong>zoekintentie</strong> te begrijpen. B2B-klanten zoeken anders dan consumenten.</p>
+
+<h2>2. Optimaliseer voor conversie</h2>
+<p>Het is niet genoeg om bezoekers te trekken. Zet in op <strong>leadgeneratie</strong> door duidelijke CTA's en downloadbare whitepapers.</p>
+
+<h2>3. Lokale SEO, ook voor B2B</h2>
+<p>Zelfs als je nationaal werkt, kan lokaal gevonden worden doorslaggevend zijn. Zorg dat je bedrijfsprofiel klopt en lokaal scoort.</p>
+
+<h2>4. Techniek = fundering</h2>
+<p>Een trage site of kapotte links zijn SEO-killers. Gebruik Lighthouse of PageSpeed Insights en fix fouten.</p>
+
+<h2>5. EAT: Expertise, Authoritativeness, Trust</h2>
+<p>Laat zien dat je expert bent. Publiceer blogs, cases en artikelen die autoriteit uitstralen.</p>
+
+<h2>6. Linkbuilding blijft key</h2>
+<p>Externe verwijzingen van relevante websites maken je domein sterker. Denk aan gastblogs of vakportalen.</p>
+
+<h2>7. Contentconsistentie</h2>
+<p>Google beloont websites die <em>regelmatig</em> publiceren. Zoals deze blog dus. 😉</p>
+
+<p><strong>Conclusie:</strong> Begin vandaag. Of bel FBN Marketing, dan regelen wij het.</p>
 """
 
-# Auth
+# === AUTH ===
 token = base64.b64encode(f"{wp_user}:{wp_password}".encode()).decode("utf-8")
 headers = {
     "Authorization": f"Basic {token}",
     "Content-Type": "application/json"
 }
 
-# WordPress POST verzoek
-data = {
+# === AFBEELDING OPHALEN EN UPLOADEN ===
+image_data = requests.get(image_url).content
+media = requests.post(
+    f"{wp_url}/wp-json/wp/v2/media",
+    headers={**headers, "Content-Disposition": "attachment; filename=seo.jpg"},
+    data=image_data
+)
+
+if media.status_code == 201:
+    image_id = media.json()['id']
+else:
+    image_id = None
+
+# === BLOG PLAATSEN ===
+post_data = {
     "title": title,
     "content": content,
-    "status": "publish"
+    "status": "publish",
+    "featured_media": image_id if image_id else None
 }
 
-r = requests.post(f"{wp_url}/wp-json/wp/v2/posts", headers=headers, json=data)
+r = requests.post(f"{wp_url}/wp-json/wp/v2/posts", headers=headers, json=post_data)
 
 if r.status_code == 201:
-    print("✅ Blog geplaatst!")
+    print("✅ Blog succesvol geplaatst!")
 else:
-    print(f"❌ Mislukt met status {r.status_code}")
-    print(r.text)
+    print(f"❌ Mislukt: {r.status_code}\n{r.text}")
