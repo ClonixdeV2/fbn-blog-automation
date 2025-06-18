@@ -9,13 +9,11 @@ from email.mime.text import MIMEText
 wp_url = os.environ['WP_URL']
 wp_user = os.environ['WP_USER']
 wp_password = os.environ['WP_APP_PASSWORD']
-
-# E-mailconfiguratie
 notify_email = os.environ['EMAIL_NOTIFY']
 email_user = os.environ['EMAIL_USER']
 email_pass = os.environ['EMAIL_PASS']
 
-# === TITELSELECTIE ===
+# === TITELS ===
 title_options = [
     "Zo verbeter je je online zichtbaarheid in Zuid-Holland",
     "Waarom SEO cruciaal is voor ondernemers in Zuid-Holland",
@@ -25,14 +23,14 @@ title_options = [
 ]
 title = random.choice(title_options)
 
-# === AUTH ===
+# === AUTH HEADERS ===
 auth = base64.b64encode(f"{wp_user}:{wp_password}".encode()).decode("utf-8")
 headers = {
     "Authorization": f"Basic {auth}",
     "Content-Type": "application/json"
 }
 
-# === BLOG CONTENT ===
+# === BLOG INHOUD ===
 intro = """
 <p><strong>Als ondernemer in Zuid-Holland weet je hoe belangrijk het is om online gevonden te worden.</strong>
 In deze blog leer je hoe je met slimme SEO en contentmarketing meer verkeer én klanten aantrekt.</p>
@@ -64,7 +62,7 @@ seo_meta = {
     "yoast_focuskw": "SEO Zuid-Holland"
 }
 
-# === PUBLICATIE ===
+# === POST AANMAKEN ===
 post_data = {
     "title": title,
     "status": "publish",
@@ -92,6 +90,7 @@ if res.status_code == 201:
             smtp.send_message(msg)
             print("📧 Mail verstuurd naar:", notify_email)
     except Exception as e:
-        print("❌ Fout bij verzenden e-mail:", e)
+        print("❌ Mail kon niet worden verstuurd:", e)
+
 else:
-    print(f"❌ Blogpost mislukt: {res.status_code}\n{res.text}")
+    print(f"❌ Blogpublicatie mislukt: {res.status_code}\n{res.text}")
