@@ -11,7 +11,9 @@ wp_user = os.environ['WP_USER']
 wp_password = os.environ['WP_APP_PASSWORD']
 
 # Email info
-notify_email = "fabianbaartman5@gmail.com"
+notify_email = os.environ['EMAIL_NOTIFY']
+email_user = os.environ['EMAIL_USER']
+email_pass = os.environ['EMAIL_PASS']
 
 # === TITELS & STRUCTUUR ===
 title_options = [
@@ -80,13 +82,13 @@ if res.status_code == 201:
     # === MAIL VERSTUREN ===
     msg = MIMEText(f"Er is een nieuwe blog geplaatst op FBN Design:\n\n{title}\n{post_link}")
     msg['Subject'] = "Nieuwe blog op FBN Design"
-    msg['From'] = os.environ['EMAIL_USER']
+    msg['From'] = email_user
     msg['To'] = notify_email
 
     try:
         with smtplib.SMTP('smtp.gmail.com', 587) as smtp:
             smtp.starttls()
-            smtp.login(os.environ['EMAIL_USER'], os.environ['EMAIL_PASS'])
+            smtp.login(email_user, email_pass)
             smtp.send_message(msg)
             print("📧 Mail verstuurd naar:", notify_email)
     except Exception as e:
