@@ -80,7 +80,7 @@ if res.status_code == 201:
     # === MAIL VERSTUREN ===
     msg = MIMEText(f"Er is een nieuwe blog geplaatst op FBN Design:\n\n{title}\n{post_link}")
     msg['Subject'] = "Nieuwe blog op FBN Design"
-    msg['From'] = "noreply@fbndesign.nl"
+    msg['From'] = os.environ['EMAIL_USER']
     msg['To'] = notify_email
 
     try:
