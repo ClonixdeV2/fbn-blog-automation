@@ -48,15 +48,13 @@ def upload_image(prompt, alt):
         return media['id'], media['source_url']
     return None, ''
 
-# === CONTENT BLOKKEN ===
-content_blocks = []
+# === CONTENT OPBOUWEN ALS PURE HTML ===
 html_content = ""
 
 intro_html = """
 <p><strong>Wil jij als ondernemer in Zuid-Holland meer uit online marketing halen?</strong>
 Dan is SEO geen luxe meer, maar noodzaak. In dit artikel lees je hoe je vindbaarheid en conversie vergroot.</p>
 """
-content_blocks.append({"blockName": "core/paragraph", "attrs": {}, "innerHTML": intro_html, "innerContent": [intro_html]})
 html_content += intro_html
 
 koppen = [
@@ -90,40 +88,12 @@ for i in range(3):
     if i == 0 and image_id:
         featured_media_id = image_id
 
-    # Media text block
-    media_block = {
-        "blockName": "core/media-text",
-        "attrs": {
-            "mediaId": image_id,
-            "mediaType": "image",
-            "mediaUrl": image_url,
-            "verticalAlignment": "center"
-        },
-        "innerBlocks": [
-            {
-                "blockName": "core/image",
-                "attrs": {"id": image_id, "alt": alts[i]},
-                "innerHTML": f"<img src=\"{image_url}\" alt=\"{alts[i]}\" />",
-                "innerContent": [f"<img src=\"{image_url}\" alt=\"{alts[i]}\" />"]
-            },
-            {
-                "blockName": "core/paragraph",
-                "attrs": {},
-                "innerHTML": heading_html + paragraph_html,
-                "innerContent": [heading_html + paragraph_html]
-            }
-        ],
-        "innerHTML": "",
-        "innerContent": []
-    }
-    content_blocks.append(media_block)
-    html_content += heading_html + paragraph_html + f'<img src="{image_url}" alt="{alts[i]}">'  # fallback
+    html_content += heading_html + paragraph_html + f'<img src="{image_url}" alt="{alts[i]}"><br>'
 
 outro_html = """
 <p><strong>Klaar om hoger te ranken en meer leads te scoren?</strong>
 FBN Marketing helpt bedrijven in Zuid-Holland groeien via SEO.</p>
 """
-content_blocks.append({"blockName": "core/paragraph", "attrs": {}, "innerHTML": outro_html, "innerContent": [outro_html]})
 html_content += outro_html
 
 # === YOAST SEO META ===
@@ -138,7 +108,6 @@ post_data = {
     "title": title,
     "status": "publish",
     "content": html_content,
-    "blocks": content_blocks,
     "featured_media": featured_media_id,
     "meta": seo_meta
 }
@@ -146,6 +115,6 @@ post_data = {
 res = requests.post(f"{wp_url}/wp-json/wp/v2/posts", headers=headers, json=post_data)
 
 if res.status_code == 201:
-    print("✅ Post succesvol gepubliceerd met layout en afbeeldingen.")
+    print("✅ Post succesvol gepubliceerd met tekst, afbeeldingen en layout.")
 else:
     print(f"❌ Publiceren mislukt: {res.status_code}\n{res.text}")
